@@ -35,7 +35,7 @@ fun UserDetailScreen(
 
     Scaffold(
         topBar = {
-            SmallTopAppBar(
+            TopAppBar(
                 title = { Text("Contacto") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -59,14 +59,22 @@ fun UserDetailScreen(
 
             Spacer(Modifier.height(16.dp))
 
+            // CORRECCIÓN DE URL AQUÍ
+            val imageUrl = fixImageUrlForDetails(user.image?.url)
+
             AsyncImage(
-                model = user.image?.url,
+                model = imageUrl,
                 contentDescription = null,
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
                     .background(Color.LightGray),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                // ESTO TE AYUDARÁ A VER EL ERROR REAL EN EL LOG SI FALLA
+                onError = { error ->
+                    println("FALLO_COIL: Error cargando $imageUrl")
+                    println("FALLO_COIL: Causa -> ${error.result.throwable.message}")
+                }
             )
 
             Spacer(Modifier.height(16.dp))
@@ -79,7 +87,7 @@ fun UserDetailScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Iconos
+            // Iconos decorativos
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -105,11 +113,9 @@ fun UserDetailScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Info
+            // Tarjetas de info
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text("móvil", color = Color.Gray)
@@ -118,9 +124,7 @@ fun UserDetailScreen(
             }
 
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text("correo electrónico", color = Color.Gray)
@@ -130,7 +134,7 @@ fun UserDetailScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Botón eliminar a toda la tarjeta
+            // Botón eliminar
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -138,29 +142,20 @@ fun UserDetailScreen(
                     .clickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current
-                    ) {
-                        showDeleteDialog = true
-                    },
+                    ) { showDeleteDialog = true },
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEAEA)),
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Eliminar Contacto",
-                        color = Color.Red,
-                        fontSize = 16.sp
-                    )
+                    Text("Eliminar Contacto", color = Color.Red, fontSize = 16.sp)
                 }
             }
         }
     }
 
-    // Dialogo de confirmación
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -174,15 +169,29 @@ fun UserDetailScreen(
                         showDeleteDialog = false
                         onDeleted()
                     }
-                ) {
-                    Text("Eliminar", color = Color.Red)
-                }
+                ) { Text("Eliminar", color = Color.Red) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
-                }
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") }
             }
         )
     }
+}
+
+// --- FUNCIÓN PRIVADA PARA EL DETALLE CON TU IP ---
+private fun fixImageUrlForDetails(url: String?): String? {
+    if (url.isNullOrEmpty()) return null
+    val myIp = "http://10.0.20.62:8000"
+
+    if (url.startsWith("http")) {
+        return url.replace("localhost", "10.0.20.62")
+            .replace("127.0.0.1", "10.0.20.62")
+    }
+
+    var cleanPath = if (url.startsWith("/")) url else "/$url"
+    if (!cleanPath.startsWith("/storage")) {
+        cleanPath = "/storage$cleanPath"
+    }
+
+    return "$myIp$cleanPath"
 }
